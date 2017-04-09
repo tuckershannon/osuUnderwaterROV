@@ -11,16 +11,17 @@ pwm.setPWMFreq(50)
 # Settings for the RemoteROV server
 portListen = 9038                      
 global motorMin 
-global motorNuetral
+global motorNeutral
 global motorMax
 #global throttleRange = motorMax - motorNeutral
 # Class used to handle UDP messages
 class rovHandler(SocketServer.BaseRequestHandler):
     joyData=[]
     motorMin = 170;
-    motorNuetral = 330;
+    motorNeutral = 330;
     motorMax = 450;
-    throttleRange = motorMax - motorNuetral;
+    throttleRange = motorMax - motorNeutral;
+	reverseThrottleRange = motorNeutral - motorMin;
 
     def handle(self):
         global isRunning
@@ -62,13 +63,30 @@ class rovHandler(SocketServer.BaseRequestHandler):
                 speed = 1
             if speed < -1:
                 speed = -1
-            speed =self.motorNuetral+(speed*self.throttleRange)
+            speed =self.motorNeutral+(speed*self.throttleRange)
             pwm.setPWM(motor,0,int(speed))
     
 
         
         #print "LeftX: %.2f LeftY: %.2f RightX: %.2f RightY: %.2f" %(float(driveCommands[0]),float(driveCommands[1]),float(driveCommands[2]),float(driveCommands[3]))          
 
+	def runGripper(self): #assuming same motor for servo
+		open = int(self.joyData[8])
+		close = int(self.joyData[9])	#we don't know what buttons these actually are
+		rotateLeft = int(self.joyData[10])
+		rotateRight = int(self.joyData[11])
+		
+		openClose = motorNeutral + (throttleRange * open) - (reverseThrottleRange * close)		
+		pwm.setPWM(7, 0, openClose) #assuming motor 7 is the gripping port
+		
+		leftRight = motorNeutral + (throttleRange * rotateLeft) - (reverseThrottleRange * rotateRight)
+		pwm.setPWM(8, 0, leftRight) #no idea if this will work as intended
+		
+		#Things we don't know
+		#Which way open/close/left/right should be, might need to reverse some of these
+		#motor ports for any of these
+		#button mapping for anything		
+		
 try:
     global isRunning
 
